@@ -62,7 +62,7 @@ class CollectorAgent(Agent):
 
 
 class InterpreterAgent(Agent):
-    """Interprets raw search results using GPT-4."""
+    """Fetches leads from Serper Maps and RapidAPI."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize with optional Agent settings."""
@@ -77,50 +77,35 @@ class InterpreterAgent(Agent):
         lat: float,
         lng: float,
     ) -> RunResponse:
-        """Combine GPT interpretation with direct RapidAPI parsing."""
+        """Collect leads using Serper Maps instead of GPT."""
 
-        system_prompt = (
-            "Você é um especialista em encontrar leads comerciais. "
-            "Sempre forneça somente contatos com e-mail válido e telefone real, nunca inventado. "
-            "Utilize as respostas das ferramentas Serper e Rapid para filtrar apenas leads que possuam "
-            "telefone e e-mail preenchidos e válidos. Limite-se a empresas localizadas dentro de um raio "
-            "máximo de 50 quilômetros da latitude e longitude informadas, sem jamais contrariar esse requisito. "
-            "Use também domínios populares como instagram.com, linkedin.com e maps.google.com. "
-            "Retorne os dados no seguinte JSON estruturado:\n\n{\n \"leads\": [{\n  \"name\": \"Nome da empresa ou contato\",\n  \"whatsapp\": \"telefone válido\",\n  \"email\": \"email válido\",\n  \"address\": \"opcional\",\n  \"summary\": \"Origem ou observações\"\n }]\n}"
-        )
-        user_prompt = (
-            f"Termo: {termo}\n\nEncontre pelo menos {num} leads comerciais próximos "
-            f"de latitude {lat} e longitude {lng}."
-        )
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "system", "content": f"SERPER: {json.dumps(serper_data)}"},
-            {"role": "system", "content": f"RAPID: {json.dumps(rapid_data)}"},
-            {"role": "user", "content": user_prompt},
-        ]
+        serper_key = os.getenv("SERPER_API_KEY", "690002f532f01766edb5037e0a53fd0bc963f6af")
+        headers = {"X-API-KEY": serper_key, "Content-Type": "application/json"} if serper_key else {}
         try:
-            response = super().run(messages=messages)
+            maps_resp = httpx.post(
+                "https://google.serper.dev/maps",
+                json={"q": termo, "hl": "pt-br", "ll": f"@{lat},{lng},13z"},
+                headers=headers,
+                timeout=30,
+            )
+            maps_data = maps_resp.json()
         except Exception:
-            response = RunResponse(content="{}")
+            maps_data = {}
 
         gpt_leads: List[Dict[str, Any]] = []
-        try:
-            parsed = json.loads(response.content)
-            for lead in parsed.get("leads", []):
-                email = lead.get("email") or lead.get("emails")
-                phone = lead.get("whatsapp") or lead.get("phone")
-                if phone and email:
-                    gpt_leads.append(
-                        {
-                            "name": lead.get("name"),
-                            "whatsapp": phone,
-                            "emails": email,
-                            "address": lead.get("address"),
-                            "about": lead.get("summary") or "gpt",
-                        }
-                    )
-        except Exception:
-            pass
+        for place in maps_data.get("localResults", {}).get("places", []):
+            phone = place.get("phoneNumber")
+            email = place.get("email")
+            if phone and email:
+                gpt_leads.append(
+                    {
+                        "name": place.get("title"),
+                        "whatsapp": phone,
+                        "emails": email,
+                        "address": place.get("address"),
+                        "about": "serper_maps",
+                    }
+                )
 
         rapid_leads: List[Dict[str, Any]] = []
         for item in rapid_data.get("data", []):
