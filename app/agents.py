@@ -46,8 +46,9 @@ class CollectorAgent(Agent):
 class InterpreterAgent(Agent):
     """Interprets raw search results using GPT-4."""
 
-    def __init__(self) -> None:
-        super().__init__(model=OpenAIChat(id="gpt-4o"))
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize with optional Agent settings."""
+        super().__init__(model=OpenAIChat(id="gpt-4o"), **kwargs)
 
     def run(
         self,
@@ -106,8 +107,9 @@ class ValidatorAgent(Agent):
 class StorageAgent(Agent):
     """Stores leads in Supabase."""
 
-    def __init__(self) -> None:
-        super().__init__(model=None)
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize with optional Agent settings."""
+        super().__init__(model=None, **kwargs)
         url = os.getenv("SUPABASE_URL")
         key = os.getenv("SUPABASE_KEY")
         self.client: Client | None = None
