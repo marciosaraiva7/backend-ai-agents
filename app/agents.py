@@ -119,20 +119,23 @@ class StorageAgent(Agent):
     def run(self, id_user: str, leads: List[Dict[str, Any]], lat: float, lng: float) -> RunResponse:
         if not self.client:
             return RunResponse(content={"stored": 0})
-        for lead in leads:
-            self.client.table("leads").insert(
-                {
-                    "id_user": id_user,
-                    "name": lead.get("name"),
-                    "phone": lead.get("whatsapp"),
-                    "email": lead.get("email"),
-                    "address": lead.get("address"),
-                    "summary": lead.get("summary"),
-                    "latitude": lat,
-                    "longitude": lng,
-                }
-            ).execute()
-        return RunResponse(content={"stored": len(leads)})
+
+        payload = [
+            {
+                "id_user": id_user,
+                "name": lead.get("name"),
+                "phone": lead.get("whatsapp"),
+                "email": lead.get("email"),
+                "address": lead.get("address"),
+                "summary": lead.get("summary"),
+                "latitude": lat,
+                "longitude": lng,
+            }
+            for lead in leads
+        ]
+        if payload:
+            self.client.table("leads").insert(payload).execute()
+        return RunResponse(content={"stored": len(payload)})
 
 
 class SearchLeadsWorkflow(Workflow):
