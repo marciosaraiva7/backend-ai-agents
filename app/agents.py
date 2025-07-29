@@ -104,6 +104,23 @@ class ValidatorAgent(Agent):
         return RunResponse(content=valid)
 
 
+class FormatterAgent(Agent):
+    """Formats leads to match Supabase table structure."""
+
+    def run(self, leads: List[Dict[str, Any]]) -> RunResponse:
+        formatted: List[Dict[str, Any]] = []
+        for lead in leads:
+            formatted.append(
+                {
+                    "name": lead.get("name"),
+                    "phone": lead.get("whatsapp") or lead.get("phone"),
+                    "email": lead.get("email"),
+                    "address": lead.get("address"),
+                    "summary": lead.get("summary"),
+                }
+            )
+        return RunResponse(content=formatted)
+
 class StorageAgent(Agent):
     """Stores leads in Supabase."""
 
@@ -124,7 +141,7 @@ class StorageAgent(Agent):
             {
                 "id_user": id_user,
                 "name": lead.get("name"),
-                "phone": lead.get("whatsapp"),
+                "phone": lead.get("phone"),
                 "email": lead.get("email"),
                 "address": lead.get("address"),
                 "summary": lead.get("summary"),
@@ -142,6 +159,7 @@ class SearchLeadsWorkflow(Workflow):
     collector = CollectorAgent(monitoring=True)
     interpreter = InterpreterAgent(monitoring=True)
     validator = ValidatorAgent(monitoring=True)
+    formatter = FormatterAgent(monitoring=True)
     storage_agent = StorageAgent(monitoring=True)
 
     def run(
@@ -157,5 +175,6 @@ class SearchLeadsWorkflow(Workflow):
             collected["serper"], collected["rapid"], termo, num, lat, lng
         ).content
         valid_leads = self.validator.run(leads_raw).content
-        self.storage_agent.run(id_user, valid_leads, lat, lng)
-        return RunResponse(content=valid_leads)
+        formatted_leads = self.formatter.run(valid_leads).content
+        self.storage_agent.run(id_user, formatted_leads, lat, lng)
+        return RunResponse(content=formatted_leads)
