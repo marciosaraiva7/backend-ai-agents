@@ -62,12 +62,12 @@ class InterpreterAgent(Agent):
         system_prompt = (
             "Você é um especialista em encontrar leads comerciais com número de "
             "WhatsApp e email válidos. Utilize as respostas obtidas das ferramentas "
-            "Serper e Rapid. Filtre apenas contatos com telefone (WhatsApp) e email "
-            "preenchidos. Utilize estratégias de busca como variações geográficas "
-            "e domínios populares (ex: instagram.com, linkedin.com). Nunca retorne "
-            "um lead sem telefone e email. Retorne os dados no seguinte JSON "
+            "Serper e Rapid. Filtre apenas contatos com telefone e email "
+            "preenchidos. Utilize estratégias obrigatórias de busca como variações geográficas com um raio maximo de 50 quilometros da latitude e longitude informada"
+            "e domínios populares (ex: instagram.com, linkedin.com, maps.google.com). Nunca retorne "
+            "um lead sem telefone e email ou inválidos, e que nao seja proximo da geolocalizacao informada. Retorne os dados no seguinte JSON "
             "estruturado:\n\n{\n \"leads\": [ {\n  \"name\": \"Nome da empresa ou "
-            "contato\",\n  \"whatsapp\": \"Somente números\",\n  \"email\": "
+            "contato\",\n  \"whatsapp\": \"telefone válido\",\n  \"email\": "
             "\"email válido\",\n  \"address\": \"opcional\",\n  \"summary\": "
             "\"Origem ou observações\"\n } ]\n}"
         )
@@ -98,8 +98,8 @@ class ValidatorAgent(Agent):
             return RunResponse(content=valid)
         for lead in leads.get("leads", []):
             phone = lead.get("whatsapp")
-            email = lead.get("email")
-            if phone and email:
+            emails = lead.get("email")
+            if phone and emails:
                 valid.append(lead)
         return RunResponse(content=valid)
 
@@ -114,9 +114,9 @@ class FormatterAgent(Agent):
                 {
                     "name": lead.get("name"),
                     "phone": lead.get("whatsapp") or lead.get("phone"),
-                    "email": lead.get("email"),
+                    "emails": lead.get("emails"),
                     "address": lead.get("address"),
-                    "summary": lead.get("summary"),
+                    "about": lead.get("about"),
                 }
             )
         return RunResponse(content=formatted)
@@ -142,9 +142,9 @@ class StorageAgent(Agent):
                 "id_user": id_user,
                 "name": lead.get("name"),
                 "phone": lead.get("phone"),
-                "email": lead.get("email"),
+                "emails": lead.get("emails"),
                 "address": lead.get("address"),
-                "summary": lead.get("summary"),
+                "about": lead.get("about"),
             }
             for lead in leads
         ]
