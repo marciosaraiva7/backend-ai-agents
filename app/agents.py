@@ -30,12 +30,16 @@ class CollectorAgent(Agent):
             "x-rapidapi-key": rapid_key,
         }
         rapid_resp = httpx.get(
-            "https://local-business-data.p.rapidapi.com/autocomplete",
+            "https://local-business-data.p.rapidapi.com/search-in-area",
             params={
                 "query": termo,
-                "region": "br",
+                "lat": lat,
+                "lng": lng,
+                "zoom": 13,
+                "limit": 5,
                 "language": "pt",
-                "coordinates": f"{lat},{lng}",
+                "region": "br",
+                "extract_emails_and_contacts": "true",
             },
             headers=rapid_headers,
             timeout=30,
