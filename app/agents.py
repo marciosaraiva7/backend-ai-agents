@@ -13,7 +13,7 @@ class CollectorAgent(Agent):
     """Collects raw lead data from Serper and Rapid APIs."""
 
     def run(self, termo: str, lat: float, lng: float) -> RunResponse:
-        serper_key = os.getenv("SERPER_API_KEY")
+        serper_key = os.getenv("SERPER_API_KEY","690002f532f01766edb5037e0a53fd0bc963f6af")
         headers = {"X-API-KEY": serper_key} if serper_key else {}
         serper_resp = httpx.post(
             "https://google.serper.dev/search",
@@ -110,8 +110,8 @@ class StorageAgent(Agent):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize with optional Agent settings."""
         super().__init__(model=OpenAIChat(id="gpt-4.1-mini"), **kwargs)
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
+        url = os.getenv("SUPABASE_URL", "https://tzoobaegujxeoozeasoh.supabase.co")
+        key = os.getenv("SUPABASE_KEY","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6b29iYWVndWp4ZW9vemVhc29oIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODM3NjM2NCwiZXhwIjoyMDYzOTUyMzY0fQ.EPQhPtkCEQVbG0ZDEellSlAAmh5_1MT4M_xg_K-Lh2I")
         self.client: Client | None = None
         if url and key:
             self.client = create_client(url, key)
@@ -128,8 +128,6 @@ class StorageAgent(Agent):
                 "email": lead.get("email"),
                 "address": lead.get("address"),
                 "summary": lead.get("summary"),
-                "latitude": lat,
-                "longitude": lng,
             }
             for lead in leads
         ]
