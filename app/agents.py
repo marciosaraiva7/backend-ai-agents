@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import List, Dict, Any
 
 import httpx
@@ -60,16 +61,13 @@ class InterpreterAgent(Agent):
         lng: float,
     ) -> RunResponse:
         system_prompt = (
-            "Você é um especialista em encontrar leads comerciais com número de "
-            "WhatsApp e email válidos. Utilize as respostas obtidas das ferramentas "
-            "Serper e Rapid. Filtre apenas contatos com telefone e email "
-            "preenchidos. Utilize estratégias obrigatórias de busca como variações geográficas com um raio maximo de 50 quilometros da latitude e longitude informada"
-            "e domínios populares (ex: instagram.com, linkedin.com, maps.google.com). Nunca retorne "
-            "um lead sem telefone e email ou inválidos, e que nao seja proximo da geolocalizacao informada. Retorne os dados no seguinte JSON "
-            "estruturado:\n\n{\n \"leads\": [ {\n  \"name\": \"Nome da empresa ou "
-            "contato\",\n  \"whatsapp\": \"telefone válido\",\n  \"email\": "
-            "\"email válido\",\n  \"address\": \"opcional\",\n  \"summary\": "
-            "\"Origem ou observações\"\n } ]\n}"
+            "Você é um especialista em encontrar leads comerciais. "
+            "Sempre forneça somente contatos com e-mail válido e telefone real, nunca inventado. "
+            "Utilize as respostas das ferramentas Serper e Rapid para filtrar apenas leads que possuam "
+            "telefone e e-mail preenchidos e válidos. Limite-se a empresas localizadas dentro de um raio "
+            "máximo de 50 quilômetros da latitude e longitude informadas, sem jamais contrariar esse requisito. "
+            "Use também domínios populares como instagram.com, linkedin.com e maps.google.com. "
+            "Retorne os dados no seguinte JSON estruturado:\n\n{\n \"leads\": [ {\n  \"name\": \"Nome da empresa ou contato\",\n  \"whatsapp\": \"telefone válido\",\n  \"email\": \"email válido\",\n  \"address\": \"opcional\",\n  \"summary\": \"Origem ou observações\"\n } ]\n}"
         )
         user_prompt = (
             f"Termo: {termo}\n\nEncontre pelo menos {num} leads comerciais próximos "
@@ -97,9 +95,12 @@ class ValidatorAgent(Agent):
         if not leads or "leads" not in leads:
             return RunResponse(content=valid)
         for lead in leads.get("leads", []):
-            phone = lead.get("whatsapp")
-            emails = lead.get("email")
-            if phone and emails:
+            phone = lead.get("whatsapp") or lead.get("phone")
+            email = lead.get("email") or lead.get("emails")
+            digits = re.sub(r"\D", "", phone or "")
+            email_valid = bool(email) and re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", str(email))
+            phone_valid = bool(digits) and len(digits) >= 8
+            if phone_valid and email_valid:
                 valid.append(lead)
         return RunResponse(content=valid)
 
