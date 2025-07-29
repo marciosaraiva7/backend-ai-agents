@@ -136,10 +136,10 @@ class StorageAgent(Agent):
 class SearchLeadsWorkflow(Workflow):
     """Workflow orchestrating the lead search pipeline."""
 
-    collector = CollectorAgent()
-    interpreter = InterpreterAgent()
-    validator = ValidatorAgent()
-    storage = StorageAgent()
+    collector = CollectorAgent(monitoring=True)
+    interpreter = InterpreterAgent(monitoring=True)
+    validator = ValidatorAgent(monitoring=True)
+    storage = StorageAgent(monitoring=True)
 
     def run(
         self,
