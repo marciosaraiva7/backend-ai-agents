@@ -16,35 +16,47 @@ class CollectorAgent(Agent):
     def run(self, termo: str, lat: float, lng: float) -> RunResponse:
         serper_key = os.getenv("SERPER_API_KEY","690002f532f01766edb5037e0a53fd0bc963f6af")
         headers = {"X-API-KEY": serper_key} if serper_key else {}
-        serper_resp = httpx.post(
-            "https://google.serper.dev/search",
-            json={"q": termo, "hl": "pt", "gl": "br", "location": "Brazil", "page": 1},
-            headers=headers,
-            timeout=30,
-        )
-        serper_data = serper_resp.json()
+        try:
+            serper_resp = httpx.post(
+                "https://google.serper.dev/search",
+                json={
+                    "q": termo,
+                    "hl": "pt",
+                    "gl": "br",
+                    "location": "Brazil",
+                    "page": 1,
+                },
+                headers=headers,
+                timeout=30,
+            )
+            serper_data = serper_resp.json()
+        except Exception:
+            serper_data = {}
 
         rapid_key = os.getenv("RAPID_API_KEY", "1704232c36msh72debd15f5f3b9ep1ec95ejsn5d9529d788fe")
         rapid_headers = {
             "x-rapidapi-host": "local-business-data.p.rapidapi.com",
             "x-rapidapi-key": rapid_key,
         }
-        rapid_resp = httpx.get(
-            "https://local-business-data.p.rapidapi.com/search-in-area",
-            params={
-                "query": termo,
-                "lat": lat,
-                "lng": lng,
-                "zoom": 13,
-                "limit": 5,
-                "language": "pt",
-                "region": "br",
-                "extract_emails_and_contacts": "true",
-            },
-            headers=rapid_headers,
-            timeout=30,
-        )
-        rapid_data = rapid_resp.json()
+        try:
+            rapid_resp = httpx.get(
+                "https://local-business-data.p.rapidapi.com/search-in-area",
+                params={
+                    "query": termo,
+                    "lat": lat,
+                    "lng": lng,
+                    "zoom": 13,
+                    "limit": 5,
+                    "language": "pt",
+                    "region": "br",
+                    "extract_emails_and_contacts": "true",
+                },
+                headers=rapid_headers,
+                timeout=30,
+            )
+            rapid_data = rapid_resp.json()
+        except Exception:
+            rapid_data = {}
         print(rapid_data)
         return RunResponse(content={"serper": serper_data, "rapid": rapid_data})
 
@@ -86,7 +98,10 @@ class InterpreterAgent(Agent):
             {"role": "system", "content": f"RAPID: {json.dumps(rapid_data)}"},
             {"role": "user", "content": user_prompt},
         ]
-        response = super().run(messages=messages)
+        try:
+            response = super().run(messages=messages)
+        except Exception:
+            response = RunResponse(content="{}")
 
         gpt_leads: List[Dict[str, Any]] = []
         try:
