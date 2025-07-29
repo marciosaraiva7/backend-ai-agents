@@ -48,7 +48,7 @@ class InterpreterAgent(Agent):
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize with optional Agent settings."""
-        super().__init__(model=OpenAIChat(id="gpt-4o"), **kwargs)
+        super().__init__(model=OpenAIChat(id="gpt-4.1-mini"), **kwargs)
 
     def run(
         self,
@@ -109,7 +109,7 @@ class StorageAgent(Agent):
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize with optional Agent settings."""
-        super().__init__(model=None, **kwargs)
+        super().__init__(model=OpenAIChat(id="gpt-4.1-mini"), **kwargs)
         url = os.getenv("SUPABASE_URL")
         key = os.getenv("SUPABASE_KEY")
         self.client: Client | None = None
