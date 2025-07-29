@@ -65,6 +65,8 @@ class InterpreterAgent(Agent):
         lat: float,
         lng: float,
     ) -> RunResponse:
+        """Combine GPT interpretation with direct RapidAPI parsing."""
+
         system_prompt = (
             "Você é um especialista em encontrar leads comerciais. "
             "Sempre forneça somente contatos com e-mail válido e telefone real, nunca inventado. "
@@ -72,7 +74,7 @@ class InterpreterAgent(Agent):
             "telefone e e-mail preenchidos e válidos. Limite-se a empresas localizadas dentro de um raio "
             "máximo de 50 quilômetros da latitude e longitude informadas, sem jamais contrariar esse requisito. "
             "Use também domínios populares como instagram.com, linkedin.com e maps.google.com. "
-            "Retorne os dados no seguinte JSON estruturado:\n\n{\n \"leads\": [ {\n  \"name\": \"Nome da empresa ou contato\",\n  \"whatsapp\": \"telefone válido\",\n  \"email\": \"email válido\",\n  \"address\": \"opcional\",\n  \"summary\": \"Origem ou observações\"\n } ]\n}"
+            "Retorne os dados no seguinte JSON estruturado:\n\n{\n \"leads\": [{\n  \"name\": \"Nome da empresa ou contato\",\n  \"whatsapp\": \"telefone válido\",\n  \"email\": \"email válido\",\n  \"address\": \"opcional\",\n  \"summary\": \"Origem ou observações\"\n }]\n}"
         )
         user_prompt = (
             f"Termo: {termo}\n\nEncontre pelo menos {num} leads comerciais próximos "
@@ -85,12 +87,45 @@ class InterpreterAgent(Agent):
             {"role": "user", "content": user_prompt},
         ]
         response = super().run(messages=messages)
-        try:
-            leads = json.loads(response.content)
-        except Exception:
-            leads = None
-        return RunResponse(content=leads)
 
+        gpt_leads: List[Dict[str, Any]] = []
+        try:
+            parsed = json.loads(response.content)
+            for lead in parsed.get("leads", []):
+                email = lead.get("email") or lead.get("emails")
+                phone = lead.get("whatsapp") or lead.get("phone")
+                if phone and email:
+                    gpt_leads.append(
+                        {
+                            "name": lead.get("name"),
+                            "whatsapp": phone,
+                            "emails": email,
+                            "address": lead.get("address"),
+                            "about": lead.get("summary") or "gpt",
+                        }
+                    )
+        except Exception:
+            pass
+
+        rapid_leads: List[Dict[str, Any]] = []
+        for item in rapid_data.get("data", []):
+            contacts = item.get("emails_and_contacts", {})
+            emails = contacts.get("emails") or []
+            phones = contacts.get("phone_numbers") or []
+            phone = item.get("phone_number") or (phones[0] if phones else None)
+            email = emails[0] if emails else None
+            if phone and email:
+                rapid_leads.append(
+                    {
+                        "name": item.get("name"),
+                        "whatsapp": phone,
+                        "emails": email,
+                        "address": item.get("address") or item.get("full_address"),
+                        "about": "rapidapi",
+                    }
+                )
+
+        return RunResponse(content={"leads": gpt_leads + rapid_leads})
 
 class ValidatorAgent(Agent):
     """Validates the structure of lead data."""
