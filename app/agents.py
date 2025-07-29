@@ -33,14 +33,15 @@ class CollectorAgent(Agent):
             "https://local-business-data.p.rapidapi.com/autocomplete",
             params={
                 "query": termo,
-                "region": "us",
-                "language": "en",
+                "region": "br",
+                "language": "pt",
                 "coordinates": f"{lat},{lng}",
             },
             headers=rapid_headers,
             timeout=30,
         )
         rapid_data = rapid_resp.json()
+        print(rapid_data)
         return RunResponse(content={"serper": serper_data, "rapid": rapid_data})
 
 
