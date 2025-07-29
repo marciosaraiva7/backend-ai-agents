@@ -141,7 +141,7 @@ class SearchLeadsWorkflow(Workflow):
     collector = CollectorAgent(monitoring=True)
     interpreter = InterpreterAgent(monitoring=True)
     validator = ValidatorAgent(monitoring=True)
-    storage = StorageAgent(monitoring=True)
+    storage_agent = StorageAgent(monitoring=True)
 
     def run(
         self,
@@ -156,5 +156,5 @@ class SearchLeadsWorkflow(Workflow):
             collected["serper"], collected["rapid"], termo, num, lat, lng
         ).content
         valid_leads = self.validator.run(leads_raw).content
-        self.storage.run(id_user, valid_leads, lat, lng)
+        self.storage_agent.run(id_user, valid_leads, lat, lng)
         return RunResponse(content=valid_leads)
